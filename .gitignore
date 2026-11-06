@@ -9,3 +9,15 @@
 .aws/
 .env
 .venv*/
+**/packaged.yaml
+
+# Sensitive & private directories
+**/evidence/
+**/bao-cao/
+**/docs/
+**/scripts/
+*.docx
+*.log
+*latest-run.txt
+lab01/Huong-dan-*.md
+lab01/Ke-hoach-*.md

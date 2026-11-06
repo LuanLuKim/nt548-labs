@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Public and private EC2
+Parameters:
+  ProjectName: {Type: String}
+  AmiId: {Type: 'AWS::EC2::Image::Id'}
+  InstanceType: {Type: String}
+  KeyName: {Type: 'AWS::EC2::KeyPair::KeyName'}
+  PublicSubnetId: {Type: 'AWS::EC2::Subnet::Id'}
+  PrivateSubnetId: {Type: 'AWS::EC2::Subnet::Id'}
+  PublicSgId: {Type: 'AWS::EC2::SecurityGroup::Id'}
+  PrivateSgId: {Type: 'AWS::EC2::SecurityGroup::Id'}
+Resources:
+  PublicInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      MetadataOptions: {HttpTokens: required}
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          SubnetId: !Ref PublicSubnetId
+          GroupSet: [!Ref PublicSgId]
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-public'}]
+  PrivateInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      MetadataOptions: {HttpTokens: required}
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          AssociatePublicIpAddress: false
+          DeleteOnTermination: true
+          SubnetId: !Ref PrivateSubnetId
+          GroupSet: [!Ref PrivateSgId]
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-private'}]
+Outputs:
+  PublicInstanceId: {Value: !Ref PublicInstance}
+  PrivateInstanceId: {Value: !Ref PrivateInstance}
+  PublicIp: {Value: !GetAtt PublicInstance.PublicIp}
+  PublicPrivateIp: {Value: !GetAtt PublicInstance.PrivateIp}
+  PrivateIp: {Value: !GetAtt PrivateInstance.PrivateIp}

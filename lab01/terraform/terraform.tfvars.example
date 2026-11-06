@@ -1,0 +1,10 @@
+project       = "nt548-tf"
+aws_region    = "us-east-1"
+az            = "us-east-1a"
+vpc_cidr      = "10.10.0.0/16"
+public_cidr   = "10.10.1.0/24"
+private_cidr  = "10.10.2.0/24"
+ssh_cidr      = "203.0.113.10/32"  # Documentation address, local tests only.
+ami_id        = "ami-00000000000000000" # Fake AMI, local tests only.
+key_name      = "vockey" # Must be verified before AWS deployment.
+instance_type = "t3.micro" # Must be verified against lab restrictions.
