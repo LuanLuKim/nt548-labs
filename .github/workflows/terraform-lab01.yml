@@ -1,0 +1,124 @@
+name: Terraform Lab 01
+
+on:
+  push:
+    branches: [main, lab02-github-actions]
+    paths:
+      - lab01/terraform/**
+      - .github/workflows/terraform-lab01.yml
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy to the active AWS Academy Learner Lab
+        type: boolean
+        default: false
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-lab01
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lab01/terraform
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.17.1
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive
+      - name: Initialize providers without the AWS backend
+        run: terraform init -backend=false -input=false
+      - name: Validate Terraform
+        run: terraform validate -no-color
+      - name: Run Terraform tests
+        run: terraform test -no-color
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install Checkov
+        run: python -m pip install checkov==3.4.3
+      - name: Audit Terraform with Checkov
+        run: |
+          scan_status=0
+          checkov -d . --framework terraform --output json > "$RUNNER_TEMP/checkov.json" || scan_status=$?
+          python - "$RUNNER_TEMP/checkov.json" "$scan_status" <<'PY'
+          import json
+          import os
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as scan_file:
+              report = json.load(scan_file)
+          if isinstance(report, list):
+              report = next(item for item in report if item.get("check_type") == "terraform")
+          summary = report["summary"]
+          passed = summary["passed"]
+          failed = summary["failed"]
+          parsing_errors = summary["parsing_errors"]
+          line = f"Checkov: {passed} passed, {failed} failed, {parsing_errors} parsing errors"
+          print(line)
+          findings = sorted({item["check_id"] for item in report["results"]["failed_checks"]})
+          if findings:
+              print("Findings:", ", ".join(findings))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary_file:
+              summary_file.write(line + "\n")
+              if failed:
+                  summary_file.write("Findings: " + ", ".join(findings) + "\n")
+                  summary_file.write("Policy findings are advisory while the lab exceptions are reviewed.\n")
+          if parsing_errors or (int(sys.argv[2]) != 0 and failed == 0):
+              sys.exit("Checkov scan failed without policy findings")
+          PY
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    needs: checks
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      TF_VAR_ssh_cidr: ${{ vars.SSH_CIDR }}
+      TF_VAR_ami_id: ${{ vars.AMI_ID }}
+      TF_VAR_key_name: ${{ vars.EC2_KEY_NAME }}
+    defaults:
+      run:
+        working-directory: lab01/terraform
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.17.1
+          terraform_wrapper: false
+      - name: Check Learner Lab settings
+        run: |
+          for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN TF_VAR_ssh_cidr TF_VAR_ami_id TF_VAR_key_name; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is missing"
+              exit 1
+            fi
+          done
+      - name: Initialize the shared S3 state
+        run: terraform init -input=false
+      - name: Create a plan
+        run: terraform plan -input=false -out=deploy.tfplan
+      - name: Stop if the plan would delete resources
+        run: |
+          terraform show -json deploy.tfplan | python -c '
+          import json, sys
+          plan = json.load(sys.stdin)
+          deleting = [change["address"] for change in plan.get("resource_changes", [])
+                      if "delete" in change.get("change", {}).get("actions", [])]
+          if deleting:
+              print("Plan contains deletions; review locally before deploying:", *deleting, sep="\n")
+              sys.exit(1)
+          print("Plan contains no deletions")
+          '
+      - name: Apply the plan
+        run: terraform apply -input=false deploy.tfplan
