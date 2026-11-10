@@ -10,6 +10,8 @@
 
 Workflow [terraform-lab01.yml](.github/workflows/terraform-lab01.yml) tự chạy kiểm tra định dạng, cú pháp, test Terraform và Checkov khi mã Terraform được đẩy lên nhánh `main` hoặc `lab02-github-actions`. Checkov hiện còn các cảnh báo cần phân loại; workflow ghi số lượng cảnh báo vào phần Summary và chỉ dừng khi không phân tích được mã Terraform. Kết quả Checkov không được coi là đã đạt toàn bộ chính sách.
 
+Chi tiết 12 cảnh báo và danh sách ảnh minh chứng cần chụp trên AWS Console: [LAB02-CAU1-CHECKOV.md](LAB02-CAU1-CHECKOV.md).
+
 Để triển khai trong AWS Academy Learner Lab:
 
 1. Hoàn tất việc chuyển state cục bộ sang S3 backend trong `lab01/terraform/backend.tf`. Kiểm tra `terraform state list` vẫn có 18 tài nguyên trước khi dùng workflow triển khai.

@@ -1,0 +1,22 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - python -m pip install --no-cache-dir cfn-lint==1.60.0 taskcat==0.9.58
+  pre_build:
+    commands:
+      - python prepare_build.py
+  build:
+    commands:
+      - cfn-lint root.yaml modules/network.yaml modules/security.yaml modules/compute.yaml -i W3002
+      - aws cloudformation package --template-file root.yaml --s3-bucket "$TEMPLATE_BUCKET" --s3-prefix lab02/templates --region us-east-1 --output-template-file packaged.yaml
+      - cfn-lint packaged.yaml modules/network.yaml modules/security.yaml modules/compute.yaml
+      - taskcat test run
+
+artifacts:
+  files:
+    - packaged.yaml
+    - template-configuration.json
