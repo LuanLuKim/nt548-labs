@@ -2,7 +2,7 @@ name: Terraform Lab 01
 
 on:
   push:
-    branches: [main]
+    branches: [main, lab02-github-actions]
     paths:
       - lab01/terraform/**
       - .github/workflows/terraform-lab01.yml

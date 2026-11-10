@@ -8,7 +8,7 @@
 
 ## GitHub Actions cho Terraform (bài thực hành 02, câu 1)
 
-Workflow [terraform-lab01.yml](.github/workflows/terraform-lab01.yml) tự chạy kiểm tra định dạng, cú pháp, test Terraform và Checkov khi mã Terraform được đẩy lên nhánh `main`. Checkov hiện còn các cảnh báo cần phân loại; workflow ghi số lượng cảnh báo vào phần Summary và chỉ dừng khi không phân tích được mã Terraform. Kết quả Checkov không được coi là đã đạt toàn bộ chính sách.
+Workflow [terraform-lab01.yml](.github/workflows/terraform-lab01.yml) tự chạy kiểm tra định dạng, cú pháp, test Terraform và Checkov khi mã Terraform được đẩy lên nhánh `main` hoặc `lab02-github-actions`. Checkov hiện còn các cảnh báo cần phân loại; workflow ghi số lượng cảnh báo vào phần Summary và chỉ dừng khi không phân tích được mã Terraform. Kết quả Checkov không được coi là đã đạt toàn bộ chính sách.
 
 Để triển khai trong AWS Academy Learner Lab:
 
